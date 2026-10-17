@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { User, Subject } from '../types/erp';
+import { sanitizeSpreadsheetCell, sanitizeText, isSafeKey, safeNumber } from './security';
 
 export interface ParsedStudentRow {
   rollNo: string;
@@ -47,42 +48,45 @@ export async function parseStudentExcel(file: File): Promise<{
 
         jsonRows.forEach((row, index) => {
           const rowNum = index + 2; // account for header
-          // Normalise keys by removing spaces and lowercasing
+          // Normalise keys by removing spaces and lowercasing, while defending against prototype pollution
           const normalized: Record<string, any> = {};
           for (const key of Object.keys(row)) {
+            if (!isSafeKey(key)) continue;
             const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-            normalized[cleanKey] = row[key];
+            if (isSafeKey(cleanKey)) {
+              normalized[cleanKey] = row[key];
+            }
           }
 
-          const rollNo = String(
+          const rollNo = sanitizeText(
             normalized['rollno'] ||
             normalized['rollnumber'] ||
             normalized['roll'] ||
             normalized['id'] ||
             ''
-          ).trim();
+          );
 
-          const name = String(
+          const name = sanitizeText(
             normalized['name'] ||
             normalized['studentname'] ||
             normalized['fullname'] ||
             ''
-          ).trim();
+          );
 
-          const email = String(
+          const email = sanitizeText(
             normalized['email'] ||
             normalized['emailaddress'] ||
             normalized['studentemail'] ||
             (rollNo ? `${rollNo.toLowerCase()}@college.edu` : '')
-          ).trim();
+          );
 
-          const enrollmentNo = String(
+          const enrollmentNo = sanitizeText(
             normalized['enrollmentno'] ||
             normalized['enrollmentnumber'] ||
             normalized['regno'] ||
             normalized['registrationno'] ||
             rollNo
-          ).trim();
+          );
 
           if (!name || !rollNo) {
             errors.push(`Row ${rowNum}: Missing mandatory 'Roll No' or 'Name'. Skipped.`);
@@ -93,12 +97,12 @@ export async function parseStudentExcel(file: File): Promise<{
             rollNo,
             name,
             email,
-            phone: String(normalized['phone'] || normalized['mobile'] || normalized['contact'] || ''),
+            phone: sanitizeText(normalized['phone'] || normalized['mobile'] || normalized['contact'] || ''),
             enrollmentNo,
-            gender: String(normalized['gender'] || ''),
-            guardianName: String(normalized['guardianname'] || normalized['parentname'] || ''),
-            guardianContact: String(normalized['guardiancontact'] || normalized['parentcontact'] || ''),
-            bloodGroup: String(normalized['bloodgroup'] || ''),
+            gender: sanitizeText(normalized['gender'] || ''),
+            guardianName: sanitizeText(normalized['guardianname'] || normalized['parentname'] || ''),
+            guardianContact: sanitizeText(normalized['guardiancontact'] || normalized['parentcontact'] || ''),
+            bloodGroup: sanitizeText(normalized['bloodgroup'] || ''),
           });
         });
 
@@ -140,27 +144,36 @@ export async function parseExamMarksExcel(file: File): Promise<{
           const rowNum = index + 2;
           const normalized: Record<string, any> = {};
           for (const key of Object.keys(row)) {
+            if (!isSafeKey(key)) continue;
             const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-            normalized[cleanKey] = row[key];
+            if (isSafeKey(cleanKey)) {
+              normalized[cleanKey] = row[key];
+            }
           }
 
-          const rollNo = String(
+          const rollNo = sanitizeText(
             normalized['rollno'] || normalized['rollnumber'] || normalized['studentid'] || ''
-          ).trim();
+          );
 
-          const subjectCode = String(
+          const subjectCode = sanitizeText(
             normalized['subjectcode'] ||
             normalized['subject'] ||
             normalized['coursecode'] ||
             ''
-          ).trim();
+          ).toUpperCase();
 
-          const marksObtained = Number(
-            normalized['marksobtained'] || normalized['marks'] || normalized['score'] || 0
+          const marksObtained = safeNumber(
+            normalized['marksobtained'] || normalized['marks'] || normalized['score'] || 0,
+            0,
+            0,
+            1000
           );
 
-          const maxMarks = Number(
-            normalized['maxmarks'] || normalized['totalmarks'] || normalized['outof'] || 100
+          const maxMarks = safeNumber(
+            normalized['maxmarks'] || normalized['totalmarks'] || normalized['outof'] || 100,
+            100,
+            1,
+            1000
           );
 
           if (!rollNo) {
@@ -170,11 +183,11 @@ export async function parseExamMarksExcel(file: File): Promise<{
 
           results.push({
             rollNo,
-            studentName: String(normalized['studentname'] || normalized['name'] || ''),
+            studentName: sanitizeText(normalized['studentname'] || normalized['name'] || ''),
             subjectCode,
             marksObtained,
             maxMarks,
-            remarks: String(normalized['remarks'] || ''),
+            remarks: sanitizeText(normalized['remarks'] || ''),
           });
         });
 

@@ -52,7 +52,6 @@ export const INITIAL_USERS: User[] = [
     email: 'superadmin@campuscore.edu',
     role: 'super_admin',
     phone: '+1 (555) 019-2831',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   },
   // 2. Main Admins
   {
