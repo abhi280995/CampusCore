@@ -1,0 +1,6 @@
+{
+  "name": "CampusCore ERP - College Management System",
+  "description": "Comprehensive multi-tier college ERP system featuring role-based dashboards for Super Admin, Main Admin, Sub Admin Teachers, Class Incharges, and Students, automated conflict-free timetable generation, attendance logging, notice circulars, and exam result management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
